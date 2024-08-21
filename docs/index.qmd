@@ -20,17 +20,18 @@ format:
 # Load necessary packages
 install_and_load_packages <- function(packages) {
   for (package in packages) {
-    # Comprueba si el paquete está instalado
-    if (!require(package, character.only = TRUE)) {
-      # Instala el paquete si no está instalado
-      install.packages(package)
-      # Carga el paquete después de instalarlo
-      library(package, character.only = TRUE)
+    if (!require(package, character.only = TRUE, quietly = TRUE)) {
+      tryCatch({
+        install.packages(package)
+        library(package, character.only = TRUE)
+      }, error = function(e) {
+        message(paste("Error installing or loading package:", package))
+        message(e)
+      })
     }
   }
 }
-
-necessary_packages <- c("haven", "knitr", "readxl", "tidyverse","Hmisc", "data.table", "survey", "scales","gt","FactoMineR","factoextra","vcd","reshape2","klaR", "stringr", "kableExtra", "openxlsx")
+necessary_packages <- c("haven", "knitr", "readxl", "tidyverse","Hmisc", "data.table", "survey", "scales","gt","FactoMineR","factoextra","vcd","reshape2","klaR", "stringr", "kableExtra", "openxlsx","dplyr")
 
 install_and_load_packages(necessary_packages)
 
@@ -425,14 +426,14 @@ results_df <- rbind(
   data.frame(Year = "2015", Variable = "P129", stats_2015_P129),
   data.frame(Year = "2018", Variable = "P128", stats_2018_P128),
   data.frame(Year = "2022", Variable = "P89", stats_2022_P89)
-) %>% mutate(Index = rownames(.))
+) %>% dplyr::mutate(Index = rownames(.))
 
 strings_to_remove <- c("P129","P128","P891. ","P892. ","P89")
 results_df$Index <- Reduce(function(vector, pattern) gsub(pattern, "", vector), 
                          strings_to_remove, 
                          results_df$Index)
 results_df$Index <- gsub("í", "i", results_df$Index)
-results_df<-results_df %>% filter(Index=="Si")
+results_df<- results_df %>% dplyr::filter(Index=="Si")
 
 #EDAD
 # Calculations for each year and variable
@@ -445,7 +446,7 @@ results_df_2 <- rbind(
   data.frame(Year = "2015", Variable = "P130", stats_2015_P130),
   data.frame(Year = "2018", Variable = "P129", stats_2018_P129),
   data.frame(Year = "2022", Variable = "P90", stats_2022_P90)
-) %>% mutate("Años" = rownames(.))
+) %>% dplyr::mutate("Años" = rownames(.))
 
 strings_to_remove <- c("P130","P129","P901. ","P902. ","P90")
 results_df_2$Años <- Reduce(function(vector, pattern) gsub(pattern, "", vector), 
@@ -453,9 +454,9 @@ results_df_2$Años <- Reduce(function(vector, pattern) gsub(pattern, "", vector)
                          results_df_2$Años)
 results_df_2$Años <- as.numeric(results_df_2$Años)
 results_df_2 <- results_df_2 %>%
-                drop_na() %>%
-                filter(Años != 1) %>%
-                mutate(across(where(is.numeric), ~if_else(. < 0, 0, .)))
+                tidyr::drop_na() %>%
+                dplyr::filter(Años != 1) %>%
+                dplyr::mutate(across(where(is.numeric), ~if_else(. < 0, 0, .)))
 
 ```
 
@@ -545,7 +546,7 @@ famdINJUV2015 <- female_data_list$`BBDD JÓVENES 2015` %>% dplyr::select(REGION,
                                                           P121,
                                                           P122,
                                                           P128,
-                                                          P129) %>% drop_na()
+                                                          P129) %>% tidyr::drop_na()
 
 # # Function to remove SPSS attributes
 # remove_spss_attrs <- function(df) {
@@ -557,7 +558,7 @@ famdINJUV2015 <- female_data_list$`BBDD JÓVENES 2015` %>% dplyr::select(REGION,
 # }
 # 
 famdINJUV2015 <- famdINJUV2015 %>%
-  mutate(across(everything(), ~ as_factor(.)))
+  dplyr::mutate(across(everything(), ~ as_factor(.)))
 
 # Función para eliminar atributos SPSS y obtener etiquetas de columnas
 get_labels <- function(df) {
@@ -634,22 +635,22 @@ famdINJUV2015_clean$Cluster <- kmodes_result_all$cluster
 proportion_p129 <- famdINJUV2015_clean %>%
   count(`P129. ¿Te ha tocado vivir un embarazo no planificado con alguna pareja o con alguien con quien hayas tenido relaciones sexuales alguna vez?`, Cluster) %>%
   group_by(`P129. ¿Te ha tocado vivir un embarazo no planificado con alguna pareja o con alguien con quien hayas tenido relaciones sexuales alguna vez?`) %>%
-  mutate(Proportion = n / sum(n))
+  dplyr::mutate(Proportion = n / sum(n))
 
 # Filtrar los datos para el cluster 7 con la respuesta "Sí" en P129
 cluster7_yes <- famdINJUV2015_clean %>%
-  filter(Cluster == 7 & `P129. ¿Te ha tocado vivir un embarazo no planificado con alguna pareja o con alguien con quien hayas tenido relaciones sexuales alguna vez?` == "Sí")
+  dplyr::filter(Cluster == 7 & `P129. ¿Te ha tocado vivir un embarazo no planificado con alguna pareja o con alguien con quien hayas tenido relaciones sexuales alguna vez?` == "Sí")
 
 # Filtrar los datos para el cluster 4 con la respuesta "No" en P129
 cluster4_no <- famdINJUV2015_clean %>%
-  filter(Cluster == 4 & `P129. ¿Te ha tocado vivir un embarazo no planificado con alguna pareja o con alguien con quien hayas tenido relaciones sexuales alguna vez?` == "No")
+  dplyr::filter(Cluster == 4 & `P129. ¿Te ha tocado vivir un embarazo no planificado con alguna pareja o con alguien con quien hayas tenido relaciones sexuales alguna vez?` == "No")
 
 # Añadir una columna para la respuesta en P129
 cluster7_yes <- cluster7_yes %>%
-  mutate(Response = "Sí")
+  dplyr::mutate(Response = "Sí")
 
 cluster4_no <- cluster4_no %>%
-  mutate(Response = "No")
+  dplyr::mutate(Response = "No")
 
 # Combinar ambos clusters en un solo data frame
 combined_data <- bind_rows(cluster7_yes, cluster4_no)
@@ -657,7 +658,7 @@ combined_data <- bind_rows(cluster7_yes, cluster4_no)
 # Convertir los datos a formato largo
 data_long_combined <- combined_data %>%
   dplyr::select(-Cluster, -`P129. ¿Te ha tocado vivir un embarazo no planificado con alguna pareja o con alguien con quien hayas tenido relaciones sexuales alguna vez?`) %>%
-  pivot_longer(-Response, names_to = "Variable", values_to = "Value")
+  tidyr::pivot_longer(-Response, names_to = "Variable", values_to = "Value")
 
 # Calcular las frecuencias de los niveles de las variables
 frequencies_combined <- data_long_combined %>%
@@ -709,7 +710,7 @@ ggplot(frequencies_combined, aes(x = Value, y = Frequency, fill = Response)) +
 rename_columns_with_labels <- function(df) {
     # Convertir solo las variables no numéricas en factores
     df <- df %>%
-        mutate(across(where(~ !is.numeric(.)), ~ as_factor(.)))
+        dplyr::mutate(across(where(~ !is.numeric(.)), ~ as_factor(.)))
     
     # Obtener etiquetas de las columnas y reemplazar NAs con los nombres originales
     labels <- sapply(df, function(col) {
@@ -741,10 +742,10 @@ female_data_list[[4]] <- rename_columns_with_labels(female_data_list[[4]]) %>%
   rename_with(~ make.names(.)) 
 
 female_data_list_2015_si <- female_data_list[[4]] %>% 
-  filter(P129...Te.ha.tocado.vivir.un.embarazo.no.planificado.con.alguna.pareja.o.con.alguien.con.quien.hayas.tenido.relaciones.sexuales.alguna.vez.=="Sí")
+  dplyr::filter(P129...Te.ha.tocado.vivir.un.embarazo.no.planificado.con.alguna.pareja.o.con.alguien.con.quien.hayas.tenido.relaciones.sexuales.alguna.vez.=="Sí")
 
 female_data_list_2015_no <- female_data_list[[4]] %>% 
-  filter(P129...Te.ha.tocado.vivir.un.embarazo.no.planificado.con.alguna.pareja.o.con.alguien.con.quien.hayas.tenido.relaciones.sexuales.alguna.vez.=="No" & P83...Cuántos.hijos.tienes. !=0)
+  dplyr::filter(P129...Te.ha.tocado.vivir.un.embarazo.no.planificado.con.alguna.pareja.o.con.alguien.con.quien.hayas.tenido.relaciones.sexuales.alguna.vez.=="No" & P83...Cuántos.hijos.tienes. !=0)
 
 # Crear el diseño usando los nombres de columnas válidos
 INJUV2015.design <- svydesign(ids = ~female_data_list[[4]]$Folio, 
@@ -854,16 +855,16 @@ clean_niveles <- function(variable, niveles) {
 # Aplicar la limpieza a la columna Niveles
 final_result$Niveles <- mapply(clean_niveles, final_result$Variable, final_result$Niveles)
 final_result <- final_result %>%
-  filter(!Niveles %in% c("NS-NR", "No aplica", "No responde", "No manejo", "0"))
+  dplyr::filter(!Niveles %in% c("NS-NR", "No aplica", "No responde", "No manejo", "0"))
 final_result$Variable <- gsub("\\.\\.", " ", final_result$Variable)
 final_result$Variable <- gsub("\\.", " ", final_result$Variable)
 final_result <- final_result %>%
-  filter(!(`Porcentaje de la muestra.` == "0.000% [0.000% ; 0.000%]" & 
+  dplyr::filter(!(`Porcentaje de la muestra.` == "0.000% [0.000% ; 0.000%]" & 
            `Porcentaje de Embarazo no planificado: No.` == "0.000% [0.000% ; 0.000%]" &
            `Porcentaje de Embarazo no planificado: Si.` == "0.000% [0.000% ; 0.000%]"))
 
 final_result_2015 <- final_result %>%
-  mutate(Variable = case_when(
+  dplyr::mutate(Variable = case_when(
     Variable == "P106  Cuál es tu nivel de estudios alcanzado " ~ "Nivel de estudios alcanzado",
     Variable == "P110 1 Alguna vez EN LA VIDA has consumido Alcohol" ~ "Historia de consumo de Alcohol",
     Variable == "P110 10 Alguna vez EN LA VIDA has consumido Tranquilizantes sin receta médica" ~ "Historia de consumo de Analgésicos sin receta médica",
@@ -895,7 +896,7 @@ final_result_2015 <- final_result %>%
   ))
 
 final_result_2015 %>%
-  mutate(Variable = ifelse(duplicated(Variable), "", Variable)) %>%
+  dplyr::mutate(Variable = ifelse(duplicated(Variable), "", Variable)) %>%
   kable("html", escape = FALSE, align = "c", caption = "ENJUV 2015") %>%
   kable_styling(full_width = FALSE, font_size = 5) %>%
   column_spec(1, bold = TRUE) %>%  # Opcional: poner en negrita la primera columna
@@ -936,7 +937,7 @@ final_result_2015 %>%
 # 
 # p_values <- sapply(variables, function(var) calculate_p_value(var, INJUV2015.design_si, INJUV2015.design_no))
 # p_values[is.na(p_values)] <- 1
-# p_values <-as.data.frame(p_values) %>% mutate(Variable= rownames(.))
+# p_values <-as.data.frame(p_values) %>% dplyr::mutate(Variable= rownames(.))
 # 
 # final_result<-final_result %>% left_join(.,p_values, by="Variable")
 
@@ -978,7 +979,7 @@ famdINJUV2018 <- female_data_list$`BBDD JÓVENES 2018` %>% dplyr::select(REGION,
                                                           P138_1, #P138_1. ¿Alguna vez en la vida un profesional de la salud te ha diagnosticado una infección de transmisión sexual (ITS)? No, nunca
                                                           P139, #P139. ¿Has practicado alguna vez sexo oral?
                                                           P140 #P140. ¿Has practicado alguna vez sexo anal?
-                                                          ) %>% drop_na()
+                                                          ) %>% tidyr::drop_na()
 
 # Function to remove SPSS attributes
 remove_spss_attrs <- function(df) {
@@ -990,7 +991,7 @@ remove_spss_attrs <- function(df) {
 }
 
 famdINJUV2018 <- famdINJUV2018 %>%
-  mutate(across(everything(), ~ as_factor(.)))
+  dplyr::mutate(across(everything(), ~ as_factor(.)))
 
 # Función para eliminar atributos SPSS y obtener etiquetas de columnas
 get_labels <- function(df) {
@@ -1052,22 +1053,22 @@ famdINJUV2018_clean$Cluster <- kmodes_result_all$cluster
 proportion_p128 <- famdINJUV2018_clean %>%
   count(`P128. ¿Te ha tocado vivir un embarazo no planificado?`, Cluster) %>%
   group_by(`P128. ¿Te ha tocado vivir un embarazo no planificado?`) %>%
-  mutate(Proportion = n / sum(n)) %>% filter(`P128. ¿Te ha tocado vivir un embarazo no planificado?` != "NS/NR")
+  dplyr::mutate(Proportion = n / sum(n)) %>% dplyr::filter(`P128. ¿Te ha tocado vivir un embarazo no planificado?` != "NS/NR")
 
 # Filtrar los datos para el cluster 7 con la respuesta "Sí" en P128
 cluster11_yes <- famdINJUV2018_clean %>%
-  filter(Cluster == 11 & `P128. ¿Te ha tocado vivir un embarazo no planificado?` == "Si")
+  dplyr::filter(Cluster == 11 & `P128. ¿Te ha tocado vivir un embarazo no planificado?` == "Si")
 
 # Filtrar los datos para el cluster 4 con la respuesta "No" en P128
 cluster9_no <- famdINJUV2018_clean %>%
-  filter(Cluster == 9 & `P128. ¿Te ha tocado vivir un embarazo no planificado?` == "No")
+  dplyr::filter(Cluster == 9 & `P128. ¿Te ha tocado vivir un embarazo no planificado?` == "No")
 
 # Añadir una columna para la respuesta en P128
 cluster11_yes <- cluster11_yes %>%
-  mutate(Response = "Si")
+  dplyr::mutate(Response = "Si")
 
 cluster9_no <- cluster9_no %>%
-  mutate(Response = "No")
+  dplyr::mutate(Response = "No")
 
 # Combinar ambos clusters en un solo data frame
 combined_data <- bind_rows(cluster11_yes, cluster9_no)
@@ -1075,7 +1076,7 @@ combined_data <- bind_rows(cluster11_yes, cluster9_no)
 # Convertir los datos a formato largo
 data_long_combined <- combined_data %>%
   dplyr::select(-Cluster, -`P128. ¿Te ha tocado vivir un embarazo no planificado?`) %>%
-  pivot_longer(-Response, names_to = "Variable", values_to = "Value")
+  tidyr::pivot_longer(-Response, names_to = "Variable", values_to = "Value")
 
 # Calcular las frecuencias de los niveles de las variables
 frequencies_combined <- data_long_combined %>%
@@ -1133,10 +1134,10 @@ female_data_list[[5]] <- rename_columns_with_labels(female_data_list[[5]]) %>%
   rename_with(~ make.names(.)) 
 
 female_data_list_2018_si <- female_data_list[[5]] %>% 
-  filter(P128...Te.ha.tocado.vivir.un.embarazo.no.planificado. =="Si")
+  dplyr::filter(P128...Te.ha.tocado.vivir.un.embarazo.no.planificado. =="Si")
 
 female_data_list_2018_no <- female_data_list[[5]] %>% 
-  filter(P128...Te.ha.tocado.vivir.un.embarazo.no.planificado. =="No" & P89...Cuántos.hijos.as.tienes. !=0)
+  dplyr::filter(P128...Te.ha.tocado.vivir.un.embarazo.no.planificado. =="No" & P89...Cuántos.hijos.as.tienes. !=0)
 
 # Crear el diseño usando los nombres de columnas válidos
 INJUV2018.design <- svydesign(ids = ~female_data_list[[5]]$Folio, 
@@ -1190,17 +1191,17 @@ final_result <- final_result %>%
 # Aplicar la limpieza a la columna Niveles
 final_result$Niveles <- mapply(clean_niveles, final_result$Variable, final_result$Niveles)
 final_result <- final_result %>%
-  filter(!Niveles %in% c("NS/NR", "NS", "NR", "No manejo", "0", "N/A", "99", "60")) %>%
-  filter(!(Variable == "P120...A.qué.edad.tuviste.tu.primera.relación.sexual.con.penetración." &
+  dplyr::filter(!Niveles %in% c("NS/NR", "NS", "NR", "No manejo", "0", "N/A", "99", "60")) %>%
+  dplyr::filter(!(Variable == "P120...A.qué.edad.tuviste.tu.primera.relación.sexual.con.penetración." &
            Niveles %in% c("1", "2", "4", "7", "8"))) %>%
-  filter(!(`Porcentaje de la muestra.` == "0.000% [0.000% ; 0.000%]" & 
+  dplyr::filter(!(`Porcentaje de la muestra.` == "0.000% [0.000% ; 0.000%]" & 
            `Porcentaje de Embarazo no planificado: No.` == "0.000% [0.000% ; 0.000%]" &
            `Porcentaje de Embarazo no planificado: Si.` == "0.000% [0.000% ; 0.000%]"))
 final_result$Variable <- gsub("\\.\\.", " ", final_result$Variable)
 final_result$Variable <- gsub("\\.", " ", final_result$Variable)
 
 final_result_2018 <- final_result %>%
-  mutate(Variable = case_when(
+  dplyr::mutate(Variable = case_when(
     Variable == "Nivel socioeconómico" ~ "Nivel socioeconómico",
     Variable == "P112_1 Alcohol cerveza vino pisco ron u otro licor fuerte " ~ "Historia de consumo de Alcohol",
     Variable == "P112_2 Cigarrillo" ~ "Historia de consumo de Cigarrillo",
@@ -1224,7 +1225,7 @@ final_result_2018 <- final_result %>%
     TRUE ~ Variable  # Mantiene los demás valores sin cambios
   ))
 final_result_2018  %>%
-  mutate(Variable = ifelse(duplicated(Variable), "", Variable)) %>%
+  dplyr::mutate(Variable = ifelse(duplicated(Variable), "", Variable)) %>%
   kable("html", escape = FALSE, align = "c", caption = "ENJUV 2018") %>%
   kable_styling(full_width = FALSE, font_size = 5) %>%
   column_spec(1, bold = TRUE) %>%  # Opcional: poner en negrita la primera columna
@@ -1234,3 +1235,297 @@ final_result_2018  %>%
 # write.xlsx(final_result_2018, file = "final_result_2018.xlsx", row.names = FALSE)
 ```
 
+## Selection of ENJUV 2022 Variables and Clustering with k-Modes
+```{r}
+#| fig.width: 14
+#| fig.height: 12
+
+famdINJUV2022 <- female_data_list$`BBDD JÓVENES 2022` %>% dplyr::select(REGION,
+                                                          ZONA,
+                                                          NSE,
+                                                          # P10, #P10. ¿Qué crees tú que es lo más importante para ser feliz en la vida?
+                                                          # P12, #P12. Según tu opinión, de esta lista, ¿cuál consideras tú que es la condición más importante para que te vaya bien en la vida?
+                                                          P12_3, #P19_5. Utilizando una escala de 1 a 5, donde “1” es muy en desacuerdo y “5” muy de acuerdo, ¿qué tan de acuerdo estás tú con las siguientes afirmaciones? En la relación de pareja, la mujer debe ser la responsable de usar algún método de prevención o de anticoncepción
+                                                          P14, #P22. ¿Cuál es tu nivel más alto alcanzado o tu nivel educacional actual?
+                                                          P17, #	P26. ¿De qué tipo de establecimiento te GRADUASTE de la educación media?
+                                                          # P30, # 	P30. ¿Y cómo consideras que es la calidad de la educación que recibiste o recibes?
+                                                          # P31, 	#P31. Según tu opinión, ¿cuáles son las dos cosas más importantes que puedes lograr en la vida con la educación que recibes o has recibido?, ¿comencemos por la primera?
+                                                          # P35_8, # P35_8. Utilizando una escala de 1 a 7, donde 1 es pésimo y 7 excelente, evalúa los siguientes aspectos del establecimiento educacional donde cursas o cursaste tu educación media. Puedes utilizar cualquier número entre 1 y 7 La formación valórica
+                                                          #P35_9, #P35_9. Utilizando una escala de 1 a 7, donde 1 es pésimo y 7 excelente, evalúa los siguientes aspectos del establecimiento educacional donde cursas o cursaste tu educación media. Puedes utilizar cualquier número entre 1 y 7 La calidad de la educación sexual
+                                                          # P107, #	P107. ¿Te identificas con alguna religión?
+                                                          P76_1, #P112_1. ¿En los últimos 12 MESES, has consumido las siguientes sustancias…? Alcohol (cerveza, vino, pisco, ron u otro licor fuerte)
+                                                          P76_2, #P112_2. ¿En los últimos 12 MESES, has consumido las siguientes sustancias…? Cigarrillo
+                                                          P76_3, #P112_3. ¿En los últimos 12 MESES, has consumido las siguientes sustancias…? Marihuana
+                                                          P76_4, #P112_4. ¿En los últimos 12 MESES, has consumido las siguientes sustancias…? Cocaína
+                                                          P76_5, #P112_5. ¿En los últimos 12 MESES, has consumido las siguientes sustancias…? Pasta base
+                                                          P76_6, #P76_6. Tranquilizantes sin receta médica (clonazepam, alprazolam, diazepam, lorazepam, entre otros)
+                                                          P76_7, #P76_7. Analgésicos sin receta médica (tramal, valium, ravotril, codeína, morfina, metadona, petidina entre otros)
+                                                          # P76_8#	P116_4. Has perdido la noción de la realidad luego del consumo de drogas y/o estupefacientes como marihuana o cocaína, entre otros
+                                                          P81, # P120. ¿A qué edad tuviste tu primera relación sexual con penetración? ¿A qué edad tuviste tu primera relación sexual con penetración?
+                                                          P82, #P121. ¿Con cuantas personas has tenido relaciones sexuales en los ultimos doce meses? ¿Con cuántas personas has tenido relaciones sexuales en los últimos doce meses?
+                                                          P83, #P122. ¿Con quién tuviste tu PRIMERA relación sexual?
+                                                          P87_1, #	P126_1. No conoces o no sabes usar ningún método
+                                                          P89, #P128. ¿Te ha tocado vivir un embarazo no planificado?
+                                                          P99_1, #P138_1. ¿Alguna vez en la vida un profesional de la salud te ha diagnosticado una infección de transmisión sexual (ITS)? No, nunca
+                                                          P100, #P139. ¿Has practicado alguna vez sexo oral?
+                                                          P101 #P140. ¿Has practicado alguna vez sexo anal?
+                                                          ) %>% tidyr::drop_na()
+
+# Function to remove SPSS attributes
+remove_spss_attrs <- function(df) {
+  for (col in names(df)) {
+    attr(df[[col]], "format.spss") <- NULL
+    attr(df[[col]], "display_width") <- NULL
+  }
+  return(df)
+}
+
+famdINJUV2022<- famdINJUV2022%>%
+  dplyr::mutate(across(everything(), ~ as_factor(.)))
+
+# Función para eliminar atributos SPSS y obtener etiquetas de columnas
+get_labels <- function(df) {
+  labels <- sapply(df, function(col) attr(col, "label"))
+  names(labels) <- names(df)
+  labels
+}
+
+# Obtener etiquetas de columnas
+labels <- get_labels(famdINJUV2022)
+
+# Cambiar nombres de columnas por las etiquetas
+famdINJUV2022 <- famdINJUV2022 %>%
+  rename_with(~ labels[.x], everything())
+
+# Función para eliminar atributos SPSS
+remove_spss_attrs <- function(df) {
+  for (col in names(df)) {
+    attr(df[[col]], "format.spss") <- NULL
+    attr(df[[col]], "display_width") <- NULL
+  }
+  return(df)
+}
+
+# Eliminar atributos SPSS
+famdINJUV2022_clean <- remove_spss_attrs(famdINJUV2022)
+
+res.mca <- MCA(famdINJUV2022_clean, graph = F, ncp=10)
+# fviz_screeplot(res.mca, addlabels = TRUE, ylim = c(0, 50))
+# fviz_mca_biplot(res.mca, repel = TRUE)
+# Contribution of variables to dimensions
+# fviz_contrib(res.mca, choice = "var", axes = 1, top = 10)
+# fviz_contrib(res.mca, choice = "var", axes = 2, top = 10)
+# fviz_contrib(res.mca, choice = "var", axes = 3, top = 10)
+
+# Plot of the variable categories
+fviz_mca_var(res.mca, choice = "mca.cor", repel = TRUE, labelsize = 3)
+# fviz_cos2(res.mca, choice = "var", axes = 2)
+# fviz_contrib(res.mca, choice = "var", axes = 2, top = 15)
+# fviz_mca_var(res.mca, 
+#              repel = TRUE, 
+#              col.var = "cos2",
+#              gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+#              labelsize = 3) 
+
+
+
+```
+
+```{r}
+set.seed(1234)
+
+kmodes_result_all <- kmodes(as.matrix(famdINJUV2022_clean), iter.max = 1000, modes = 15)
+
+# Añadir los resultados del clustering a los datos
+famdINJUV2022_clean$Cluster <- kmodes_result_all$cluster
+
+# Calcular la proporción de cada cluster dentro de los niveles de P128
+proportion_p128 <- famdINJUV2022_clean %>%
+  count(`P89. ¿Te ha tocado vivir un embarazo no planificado?`, Cluster) %>%
+  group_by(`P89. ¿Te ha tocado vivir un embarazo no planificado?`) %>%
+  dplyr::mutate(Proportion = n / sum(n)) %>% dplyr::filter(`P89. ¿Te ha tocado vivir un embarazo no planificado?` != "NS/NR")
+
+# Filtrar los datos para el cluster 7 con la respuesta "Sí" en P128
+cluster11_yes <- famdINJUV2022_clean %>%
+  dplyr::filter(Cluster == 11 & `P89. ¿Te ha tocado vivir un embarazo no planificado?` == "1. Si")
+
+# Filtrar los datos para el cluster 4 con la respuesta "No" en P128
+cluster9_no <- famdINJUV2022_clean %>%
+  dplyr::filter(Cluster == 14 & `P89. ¿Te ha tocado vivir un embarazo no planificado?` == "2. No")
+
+# Añadir una columna para la respuesta en P128
+cluster11_yes <- cluster11_yes %>%
+  dplyr::mutate(Response = "1. Si")
+
+cluster9_no <- cluster9_no %>%
+  dplyr::mutate(Response = "2. No")
+
+# Combinar ambos clusters en un solo data frame
+combined_data <- bind_rows(cluster11_yes, cluster9_no)
+
+# Convertir los datos a formato largo
+data_long_combined <- combined_data %>%
+  dplyr::select(-Cluster, -`P89. ¿Te ha tocado vivir un embarazo no planificado?`) %>%
+  tidyr::pivot_longer(-Response, names_to = "Variable", values_to = "Value")
+
+# Calcular las frecuencias de los niveles de las variables
+frequencies_combined <- data_long_combined %>%
+  group_by(Response, Variable, Value) %>%
+  summarise(Frequency = n(), .groups = 'drop')
+```
+
+```{r}
+#| fig.width: 16
+#| fig.height: 12
+
+# Visualizar la comparación de proporciones
+ggplot(proportion_p128, aes(x = factor(Cluster), y = Proportion, fill = `P89. ¿Te ha tocado vivir un embarazo no planificado?`)) +
+  geom_bar(stat = "identity", position = "dodge", alpha = 0.5) +
+  scale_fill_manual(values = c("1. Si" = "purple", "2. No" = "lightblue"),
+                    breaks = c("1. Si", "2. No"),
+                    labels = c("1. Si", "2. No")) +
+  labs(fill = "P89 ¿Te ha tocado vivir un embarazo no planificado con alguna pareja o con alguien con quien hayas tenido relaciones sexuales alguna vez?", x = "Cluster", y = "Proporción") +
+  ggtitle("Comparación de Proporciones de Clusters entre niveles de P128") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 0, hjust = 1, size = 10),
+    axis.text.y = element_text(size = 10),
+    strip.text = element_text(size = 10),
+    legend.position = "top"
+  )
+
+# Visualizar las frecuencias con coord_flip y sin leyenda, ajustando las etiquetas y el tamaño del texto
+ggplot(frequencies_combined, aes(x = Value, y = Frequency, fill = Response)) +
+  geom_bar(stat = "identity", position = "dodge", alpha = 0.5) +
+  facet_wrap(~ Variable, scales = "free_y", labeller = label_wrap_gen(width = 30)) +
+  scale_fill_manual(values = c("1. Si" = "purple", "2. No" = "skyblue"),
+                    breaks = c("1. Si", "2. No"),
+                    labels = c("1. Si", "2. No")) +
+  labs(x = "Nivel", y = "Frecuencia", fill = "P89 ¿Te ha tocado vivir un embarazo no planificado con alguna pareja o con alguien con quien hayas tenido relaciones sexuales alguna vez?") +
+  ggtitle("Frecuencias de Niveles de Variables en los Clusters para Respuestas 'Si' y 'No' en P128") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 90, hjust = 1, size = 6),
+    axis.text.y = element_text(size = 6),
+    strip.text = element_text(size = 6),
+    legend.position = "top"
+  ) +
+  coord_flip()
+```
+
+```{r}
+# Renombrar columnas con nombres válidos para las fórmulas
+famdINJUV2022 <- famdINJUV2022 %>%
+  rename_with(~ make.names(.))
+
+# Actualizar los nombres de las columnas en female_data_list[[4]] de manera similar
+female_data_list[[6]] <- rename_columns_with_labels(female_data_list[[6]]) %>% 
+  rename_with(~ make.names(.)) 
+
+female_data_list_2022_si <- female_data_list[[6]] %>% 
+  dplyr::filter(P89...Te.ha.tocado.vivir.un.embarazo.no.planificado. =="1. Si")
+
+female_data_list_2022_no <- female_data_list[[6]] %>% 
+  dplyr::filter(P89...Te.ha.tocado.vivir.un.embarazo.no.planificado. =="2. No" & P56...Cuántos.hijos.as.quieres.tener.en.total. !=0)
+
+# Crear el diseño usando los nombres de columnas válidos
+INJUV2022.design <- svydesign(ids = ~female_data_list[[6]]$Folio, 
+                              strata = ~female_data_list[[6]]$REGIÓN, 
+                              weights = ~female_data_list[[6]]$Factor.de.Expansión, 
+                              nest = TRUE, 
+                              data = female_data_list[[6]])
+
+INJUV2022.design_si <- svydesign(ids = ~female_data_list_2022_si$Folio, 
+                              strata = ~female_data_list_2022_si$REGIÓN, 
+                              weights = ~female_data_list_2022_si$Factor.de.Expansión, 
+                              nest = TRUE, 
+                              data = female_data_list_2022_si)
+
+INJUV2022.design_no <- svydesign(ids = ~female_data_list_2022_no$Folio, 
+                              strata = ~female_data_list_2022_no$REGIÓN, 
+                              weights = ~female_data_list_2022_no$Factor.de.Expansión, 
+                              nest = TRUE, 
+                              data = female_data_list_2022_no)
+```
+
+```{r}
+# Listado de variables de interés
+variables <- colnames(famdINJUV2022)
+
+# Aplicación de la función a cada variable
+results_list <- lapply(variables, function(var) calculate_stats(var, INJUV2022.design))
+results_list_si <- lapply(variables, function(var) calculate_stats(var, INJUV2022.design_si))
+results_list_no <- lapply(variables, function(var) calculate_stats(var, INJUV2022.design_no))
+
+# Formatear los resultados
+results_list <- format_results(results_list, "la muestra.")
+results_list_si <- format_results(results_list_si, "Embarazo no planificado: Si.")
+results_list_no <- format_results(results_list_no, "Embarazo no planificado: No.")
+
+# Unir los resultados
+final_result <- do.call(rbind, results_list)
+final_result_si <- do.call(rbind, results_list_si)
+final_result_no <- do.call(rbind, results_list_no)
+
+# Seleccionar y combinar las columnas deseadas
+final_result <- final_result[, c("Variable", "Niveles", "Total de la muestra.", "Porcentaje de la muestra.")]
+final_result_si <- final_result_si[, c("Variable", "Niveles", "Total de Embarazo no planificado: Si.", "Porcentaje de Embarazo no planificado: Si.")]
+final_result_no <- final_result_no[, c("Variable", "Niveles", "Total de Embarazo no planificado: No.", "Porcentaje de Embarazo no planificado: No.")]
+
+# Combinar los resultados finales
+final_result <- final_result %>%
+  left_join(final_result_no, by = c("Variable", "Niveles")) %>%
+  left_join(final_result_si, by = c("Variable", "Niveles"))
+
+# Aplicar la limpieza a la columna Niveles
+final_result$Niveles <- mapply(clean_niveles, final_result$Variable, final_result$Niveles)
+final_result <- final_result %>%
+  dplyr::filter(!Niveles %in% c("NS/NR", "NS", "NR", "No manejo", "0", "N/A", "99", "60", "NSNR", "98. NS", "99. NR")) %>%
+  dplyr::filter(!(Variable == "P81  A qué edad tuviste tu primera relación sexual " &
+           Niveles %in% c("1", "7"))) %>%
+  dplyr::filter(!(`Porcentaje de la muestra.` == "0.000% [0.000% ; 0.000%]" & 
+           `Porcentaje de Embarazo no planificado: No.` == "0.000% [0.000% ; 0.000%]" &
+           `Porcentaje de Embarazo no planificado: Si.` == "0.000% [0.000% ; 0.000%]"))
+final_result$Variable <- gsub("\\.\\.", " ", final_result$Variable)
+final_result$Variable <- gsub("\\.", " ", final_result$Variable)
+
+final_result_2022 <- final_result %>%
+  dplyr::mutate(Variable = case_when(
+    Variable == "Nivel socioeconómico" ~ "Nivel socioeconómico",
+    Variable == "P76_1 Alcohol cerveza vino pisco ron u otro licor fuerte " ~ "Historia de consumo de Alcohol",
+    Variable == "P76_2 Cigarrillo" ~ "Historia de consumo de Cigarrillo",
+    Variable == "P76_3 Marihuana" ~ "Historia de consumo de Marihuana",
+    Variable == "P76_4 Cocaína" ~ "Historia de consumo de Cocaína",
+    Variable == "P76_5 Pasta base" ~ "Historia de consumo de Pasta base",
+    Variable == "P76_6 Tranquilizantes sin receta médica clonazepam alprazolam diazepam lorazepam entre otros " ~ "Historia de consumo de tranquilizantes",
+    Variable == "P76_7 Analgésicos sin receta médica tramal valium ravotril codeína morfina metadona petidina entre otros " ~ "Historia de consumo de tranquilizantes",
+    Variable == "P116_1 Has perdido la memoria o la consciencia luego de haber consumido alcohol" ~ "Frecuencia de perdida de consciencia por Alcohol en la vida",
+    Variable == "P116_4 Has perdido la noción de la realidad luego del consumo de drogas y o estupefacientes como marihuana o cocaína entre otros" ~ "Frecuencia de perdida de consciencia por otras Drogas en la vida",
+    Variable == "P81  A qué edad tuviste tu primera relación sexual " ~ "Edad de iniciación sexual",
+    Variable == "P82  Con cuántas personas has tenido relaciones sexuales en los últimos doce meses " ~ "Cantidad de parejas sexuales en la vida",
+    Variable == "P83  Con quién tuviste tu PRIMERA relación sexual " ~ "Persona con la cual se inició sexualmente",
+    Variable == "P87_1 No conoces o no sabes usar ningún método" ~ "Desconocimiento o falta de uso de métodos anticonceptivos",
+    Variable == "P89  Te ha tocado vivir un embarazo no planificado " ~ "Embarazo no planificado",
+    Variable == "P99_1  Has sido alguna vez diagnosticado con una infección de transmisión sexual ITS  No nunca" ~ "No haber sido diagnósticada de ITS por un profesional de la salud",
+    Variable == "P100  Has practicado alguna vez sexo oral " ~ "Otras prácticas sexuales: Sexo oral",
+    Variable == "P101  Has practicado alguna vez sexo anal " ~ "Otras prácticas sexuales: Sexo anal",
+    Variable == "P12_3 En la relación de pareja la mujer debe ser la responsable de usar algún método de prevención o de anticoncepción" ~ "Responsabilidad exclusiva femenina en anticoncepción",
+    Variable == "P14  Cuál es tu nivel más alto alcanzado o tu nivel educacional actual " ~ "Nivel de estudios alcanzado",
+    Variable == "P17  De qué tipo de establecimiento te GRADUASTE de la educación media " ~ "Tipo de establecimiento en educación Media",
+    TRUE ~ Variable  # Mantiene los demás valores sin cambios
+  )) %>%  dplyr::filter(!(Variable == "Edad de iniciación sexual" &
+           Niveles %in% c("1", "7"))) %>%  
+  dplyr::filter(!(Variable == "Cantidad de parejas sexuales en la vida" &
+           Niveles %in% c("20", "50")))
+
+
+final_result_2022  %>%
+  dplyr::mutate(Variable = ifelse(duplicated(Variable), "", Variable)) %>%
+  kable("html", escape = FALSE, align = "c", caption = "ENJUV 2022") %>%
+  kable_styling(full_width = FALSE, font_size = 5) %>%
+  column_spec(1, bold = TRUE) %>%  # Opcional: poner en negrita la primera columna
+  collapse_rows(columns = 1, valign = "top") 
+
+# write.xlsx(final_result_2022, file = "final_result_2022.xlsx", rowNames = FALSE)
+
+```
